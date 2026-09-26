@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Food Ledger</title>
+<style>
+  :root{
+    --bg:#f6f5f2; --card:#ffffff; --ink:#1c1b19; --sub:#6b6862; --line:#e3e0da;
+    --nehal:#2563eb; --rizwan:#0891b2; --mobin:#d97706;
+    --pos:#15803d; --neg:#b91c1c; --danger:#b91c1c;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15140f; --card:#1f1e19; --ink:#f1efe9; --sub:#a39d90; --line:#332f27;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15140f; --card:#1f1e19; --ink:#f1efe9; --sub:#a39d90; --line:#332f27;
+  }
+  html{scroll-padding-top: env(safe-area-inset-top, 0px);}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:520px; margin:0 auto; padding:20px 16px 40px;}
+  h1{font-size:1.4rem; font-weight:700; margin:4px 0 2px;}
+  .lede{color:var(--sub); font-size:.88rem; margin:0 0 18px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px;}
+  .card h2{font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:var(--sub); margin:0 0 12px; font-weight:600;}
+  label{display:block; font-size:.82rem; color:var(--sub); margin:10px 0 4px;}
+  input[type=date], input[type=number]{
+    width:100%; padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg); color:var(--ink); font-size:1rem;
+  }
+  .seg{display:flex; gap:8px; margin-top:4px;}
+  .seg button, .chk{
+    flex:1; padding:10px 6px; border-radius:9px; border:1.5px solid var(--line);
+    background:var(--bg); color:var(--ink); font-size:.9rem; font-weight:600; cursor:pointer;
+  }
+  .seg button.on[data-p=Nehal], .chk.on[data-p=Nehal]{border-color:var(--nehal); background:color-mix(in srgb, var(--nehal) 16%, var(--card));}
+  .seg button.on[data-p=Rizwan], .chk.on[data-p=Rizwan]{border-color:var(--rizwan); background:color-mix(in srgb, var(--rizwan) 16%, var(--card));}
+  .seg button.on[data-p=Mobin], .chk.on[data-p=Mobin]{border-color:var(--mobin); background:color-mix(in srgb, var(--mobin) 16%, var(--card));}
+  .add-btn{
+    width:100%; margin-top:14px; padding:12px; border:none; border-radius:9px;
+    background:var(--ink); color:var(--bg); font-size:1rem; font-weight:700; cursor:pointer;
+  }
+  .entry{display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); gap:10px;}
+  .entry:last-child{border-bottom:none;}
+  .e-left{font-size:.92rem; flex:1; min-width:0;}
+  .e-date{color:var(--sub); font-size:.78rem;}
+  .e-who{font-weight:600;}
+  .e-amt{font-weight:700; white-space:nowrap; width:64px; flex:0 0 64px; text-align:right; font-variant-numeric:tabular-nums;}
+  .del{background:none; border:none; color:var(--sub); font-size:1.1rem; cursor:pointer; padding:2px 6px; flex:0 0 auto;}
+  .card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .card-head h2{margin:0;}
+  .share-btn{background:none; border:1.5px solid var(--line); color:var(--ink); border-radius:8px; padding:6px 12px; font-size:.78rem; font-weight:600; cursor:pointer;}
+  .empty{color:var(--sub); font-size:.88rem; text-align:center; padding:10px 0;}
+  .bal-row{display:flex; justify-content:space-between; padding:7px 0; font-size:.94rem;}
+  .bal-name{font-weight:600;}
+  .bal-val.pos{color:var(--pos);}
+  .bal-val.neg{color:var(--neg);}
+  .settle{padding:9px 0; font-size:.94rem; border-top:1px dashed var(--line);}
+  .settle:first-child{border-top:none;}
+  .footer-btns{display:flex; gap:10px; margin-top:4px;}
+  .footer-btns button{flex:1; padding:10px; border-radius:9px; font-size:.86rem; font-weight:600; cursor:pointer;}
+  .btn-outline{background:none; border:1.5px solid var(--line); color:var(--ink);}
+  .btn-danger{background:none; border:1.5px solid var(--danger); color:var(--danger);}
+  .hist{font-size:.84rem; color:var(--sub); padding:8px 0; border-bottom:1px solid var(--line);}
+  .hist:last-child{border-bottom:none;}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;}
+  .capturing .del{ visibility:hidden; }
+  .capturing #reportArea{ padding:4px; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div id="setupBanner" style="display:none; background:#fef3c7; color:#78350f; border:1px solid #f59e0b; border-radius:12px; padding:14px; font-size:.85rem; margin-bottom:16px;">
+    <strong>One-time setup needed:</strong> open this file, find <code>firebaseConfig</code> near the top of the script, and paste in your own free Firebase project's config (see the setup steps you were given).
+  </div>
+  <div id="syncStatus" style="font-size:.78rem; color:var(--sub); margin:-6px 0 14px;">Connecting…</div>
+  <h1>Food Ledger</h1>
+  <p class="lede">Log every meal, see who owes whom.</p>
+
+  <div class="card">
+    <h2>Add a meal</h2>
+    <label for="date">Date</label>
+    <div style="display:flex; gap:8px;">
+      <input type="date" id="date" style="flex:1;">
+      <button type="button" id="todayBtn" style="padding:0 16px; border-radius:9px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); font-weight:600; cursor:pointer;">Today</button>
+    </div>
+
+    <label>Amount paid</label>
+    <input type="number" id="amount" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
+
+    <label>Paid by</label>
+    <div class="seg" id="paidBySeg">
+      <button data-p="Nehal">Nehal</button>
+      <button data-p="Rizwan">Rizwan</button>
+      <button data-p="Mobin">Mobin</button>
+    </div>
+
+    <label>Who ate</label>
+    <div class="seg" id="participantsSeg">
+      <button class="chk on" data-p="Nehal">Nehal</button>
+      <button class="chk on" data-p="Rizwan">Rizwan</button>
+      <button class="chk on" data-p="Mobin">Mobin</button>
+    </div>
+
+    <button class="add-btn" id="addBtn">Add entry</button>
+  </div>
+
+  <div id="reportArea">
+    <div class="card">
+      <div class="card-head">
+        <h2 style="margin:0;">This cycle's entries</h2>
+        <button class="share-btn" id="shareBtn">📤 Share/Save</button>
+      </div>
+      <div id="entriesList"><p class="empty">No entries yet.</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Balances</h2>
+      <div id="balances"></div>
+    </div>
+
+    <div class="card">
+      <h2>Who pays whom</h2>
+      <div id="settlements"></div>
+    </div>
+  </div>
+
+  <div class="footer-btns">
+    <button class="btn-outline" id="historyBtn">Past cycles</button>
+    <button class="btn-danger" id="resetBtn">Start new month</button>
+  </div>
+
+  <div class="card" id="historyCard" style="display:none;">
+    <h2>Past cycles</h2>
+    <div id="historyList"><p class="empty">No past cycles yet.</p></div>
+  </div>
+</div>
+
+<script>
+const PEOPLE = ["Nehal","Rizwan","Mobin"];
+const COLORS = {Nehal:"var(--nehal)", Rizwan:"var(--rizwan)", Mobin:"var(--mobin)"};
+let entries = [];
+let history = [];
+function todayLocalISO(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function formatDateLong(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS[m-1]} ${y}`;
+}
+
+let paidBy = null;
+let participants = new Set(PEOPLE);
+
+// ====== FIREBASE SETUP ======
+// 1. Go to https://console.firebase.google.com -> Create project (free).
+// 2. Build > Firestore Database > Create database (Start in test mode is fine to begin).
+// 3. Project settings (gear icon) > scroll to "Your apps" > Web app (</>) > register it.
+// 4. Copy the firebaseConfig object it gives you and paste it below, replacing this one.
+const firebaseConfig = {
+  apiKey: "AIzaSyD-3I6gPbBF43nNKDGPR8SIJz9T93-ehnc",
+  authDomain: "food-ledger-nrm.firebaseapp.com",
+  projectId: "food-ledger-nrm",
+  storageBucket: "food-ledger-nrm.firebasestorage.app",
+  messagingSenderId: "564769659329",
+  appId: "1:564769659329:web:e94456df0c6f045875f740"
+};
+let fsdb = null;
+let configReady = firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY";
+if(configReady){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    fsdb = firebase.firestore();
+  }catch(err){ configReady = false; }
+}
+
+const SEED_ENTRIES = [
+  {date:"2026-09-11", amount:10,   paidBy:"Rizwan", participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-12", amount:24.5, paidBy:"Mobin",  participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-15", amount:25.5, paidBy:"Nehal",  participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-17", amount:14,   paidBy:"Nehal",  participants:["Nehal","Rizwan"]},
+  {date:"2026-09-17", amount:30,   paidBy:"Rizwan", participants:["Nehal","Rizwan"]},
+  {date:"2026-09-18", amount:10,   paidBy:"Rizwan", participants:["Nehal","Rizwan"]},
+  {date:"2026-09-19", amount:15,   paidBy:"Nehal",  participants:["Nehal","Rizwan"]},
+  {date:"2026-09-21", amount:16.5, paidBy:"Mobin",  participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-22", amount:22,   paidBy:"Mobin",  participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-23", amount:24.5, paidBy:"Mobin",  participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-24", amount:16,   paidBy:"Nehal",  participants:["Nehal","Rizwan","Mobin"]},
+  {date:"2026-09-25", amount:15,   paidBy:"Rizwan", participants:["Nehal","Rizwan","Mobin"]}
+];
+
+async function seedIfEmpty(){
+  const snap = await fsdb.collection('entries').limit(1).get();
+  if(!snap.empty) return;
+  const batch = fsdb.batch();
+  SEED_ENTRIES.forEach(en => {
+    const ref = fsdb.collection('entries').doc();
+    batch.set(ref, en);
+  });
+  await batch.commit();
+}
+
+function setStatus(text, isError){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#b91c1c' : 'var(--sub)';
+}
+
+function startSync(){
+  fsdb.collection('entries').onSnapshot(snap => {
+    entries = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    setStatus(`Connected — ${entries.length} ${entries.length===1?'entry':'entries'} synced`);
+    render();
+  }, err => setStatus('Error loading entries: ' + err.message, true));
+
+  fsdb.collection('history').orderBy('archivedAt', 'asc').onSnapshot(snap => {
+    history = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    render();
+  }, err => {});
+}
+
+function fmt(n){ return (Math.round(n*100)/100).toFixed(2); }
+
+function computeBalances(list){
+  const paid = {Nehal:0, Rizwan:0, Mobin:0};
+  const owed = {Nehal:0, Rizwan:0, Mobin:0};
+  list.forEach(en=>{
+    paid[en.paidBy] += en.amount;
+    const share = en.amount / en.participants.length;
+    en.participants.forEach(p => owed[p] += share);
+  });
+  const balance = {};
+  PEOPLE.forEach(p => balance[p] = paid[p] - owed[p]);
+  return {paid, owed, balance};
+}
+
+function computeSettlements(balance){
+  const creditors = [], debtors = [];
+  PEOPLE.forEach(p=>{
+    const v = Math.round(balance[p]*100)/100;
+    if(v > 0.005) creditors.push({p, v});
+    else if(v < -0.005) debtors.push({p, v:-v});
+  });
+  creditors.sort((a,b)=>b.v-a.v);
+  debtors.sort((a,b)=>b.v-a.v);
+  const txns = [];
+  let i=0, j=0;
+  while(i < debtors.length && j < creditors.length){
+    const amt = Math.min(debtors[i].v, creditors[j].v);
+    if(amt > 0.005) txns.push({from: debtors[i].p, to: creditors[j].p, amt});
+    debtors[i].v -= amt;
+    creditors[j].v -= amt;
+    if(debtors[i].v <= 0.005) i++;
+    if(creditors[j].v <= 0.005) j++;
+  }
+  return txns;
+}
+
+function render(){
+  // entries list
+  const list = document.getElementById('entriesList');
+  if(entries.length === 0){
+    list.innerHTML = '<p class="empty">No entries yet.</p>';
+  } else {
+    const sortedForDisplay = entries.slice().sort((a,b) => b.date.localeCompare(a.date));
+    list.innerHTML = sortedForDisplay.map(en => `
+      <div class="entry">
+        <div class="e-left">
+          <div class="e-who"><span class="dot" style="background:${COLORS[en.paidBy]}"></span>${en.paidBy} paid</div>
+          <div class="e-date">${en.date} · with ${en.participants.join(', ')}</div>
+        </div>
+        <div class="e-amt">${fmt(en.amount)}</div>
+        <button class="del" data-id="${en.id}" title="Delete">✕</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.del').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if(!confirm('Delete this entry? This can\'t be undone.')) return;
+        fsdb.collection('entries').doc(btn.dataset.id).delete()
+          .catch(err => alert('Could not delete: ' + err.message));
+      });
+    });
+  }
+
+  // balances
+  const {balance} = computeBalances(entries);
+  const balDiv = document.getElementById('balances');
+  if(entries.length === 0){
+    balDiv.innerHTML = '<p class="empty">Add entries to see balances.</p>';
+  } else {
+    balDiv.innerHTML = PEOPLE.map(p=>{
+      const v = balance[p];
+      const cls = v >= 0 ? 'pos' : 'neg';
+      const label = v >= 0 ? `is owed ${fmt(v)}` : `owes ${fmt(-v)}`;
+      return `<div class="bal-row"><span class="bal-name"><span class="dot" style="background:${COLORS[p]}"></span>${p}</span><span class="bal-val ${cls}">${label}</span></div>`;
+    }).join('');
+  }
+
+  // settlements
+  const settleDiv = document.getElementById('settlements');
+  if(entries.length === 0){
+    settleDiv.innerHTML = '<p class="empty">Nothing to settle yet.</p>';
+  } else {
+    const txns = computeSettlements(balance);
+    if(txns.length === 0){
+      settleDiv.innerHTML = '<p class="empty">Everyone is even.</p>';
+    } else {
+      settleDiv.innerHTML = txns.map(t=>
+        `<div class="settle"><strong>${t.from}</strong> pays <strong>${t.to}</strong> — ${fmt(t.amt)}</div>`
+      ).join('');
+    }
+  }
+
+  // history
+  const histDiv = document.getElementById('historyList');
+  if(history.length === 0){
+    histDiv.innerHTML = '<p class="empty">No past cycles yet.</p>';
+  } else {
+    histDiv.innerHTML = history.slice().reverse().map(h=>{
+      const lines = h.txns.length
+        ? h.txns.map(t=>`${t.from} → ${t.to}: ${fmt(t.amt)}`).join(', ')
+        : 'Everyone was even';
+      return `<div class="hist"><strong>${h.label}</strong><br>${lines}</div>`;
+    }).join('');
+  }
+}
+
+// paid-by (single select)
+document.getElementById('paidBySeg').addEventListener('click', e=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  paidBy = btn.dataset.p;
+  document.querySelectorAll('#paidBySeg button').forEach(b=>b.classList.toggle('on', b===btn));
+});
+
+// participants (multi select, all on by default)
+document.getElementById('participantsSeg').addEventListener('click', e=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const p = btn.dataset.p;
+  if(participants.has(p)){
+    if(participants.size === 1) return; // keep at least one
+    participants.delete(p);
+    btn.classList.remove('on');
+  } else {
+    participants.add(p);
+    btn.classList.add('on');
+  }
+});
+
+document.getElementById('todayBtn').addEventListener('click', ()=>{
+  document.getElementById('date').value = todayLocalISO();
+});
+
+document.getElementById('addBtn').addEventListener('click', ()=>{
+  const dateEl = document.getElementById('date');
+  const amountEl = document.getElementById('amount');
+  const amount = parseFloat(amountEl.value);
+  if(!dateEl.value){ alert('Pick a date.'); return; }
+  if(!amount || amount <= 0){ alert('Enter an amount.'); return; }
+  if(!paidBy){ alert('Choose who paid.'); return; }
+  if(participants.size === 0){ alert('Choose who ate.'); return; }
+  if(!configReady){ alert('Add your Firebase config first (see the banner at the top).'); return; }
+
+  fsdb.collection('entries').add({
+    date: dateEl.value,
+    amount,
+    paidBy,
+    participants: Array.from(participants)
+  }).catch(err => alert('Could not save: ' + err.message));
+  amountEl.value = '';
+});
+
+async function shareAsImage(){
+  if(entries.length === 0){ alert('Add some entries first.'); return; }
+  const btn = document.getElementById('shareBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Preparing…';
+  btn.disabled = true;
+  try{
+    document.body.classList.add('capturing');
+    const target = document.getElementById('reportArea');
+    const bg = getComputedStyle(document.body).backgroundColor;
+    const canvas = await html2canvas(target, {backgroundColor: bg, scale: 2});
+    document.body.classList.remove('capturing');
+
+    canvas.toBlob(async (blob) => {
+      if(!blob){ btn.textContent = originalText; btn.disabled = false; return; }
+      const filename = `food-ledger-${todayLocalISO()}.png`;
+      const file = new File([blob], filename, {type:'image/png'});
+      let shared = false;
+      try{
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+          await navigator.share({files:[file], title:'Food Ledger'});
+          shared = true;
+        }
+      }catch(e){ /* user cancelled or share unsupported, fall back below */ }
+
+      if(!shared){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      }
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }, 'image/png');
+  }catch(e){
+    document.body.classList.remove('capturing');
+    btn.textContent = originalText;
+    btn.disabled = false;
+    alert('Could not create the image.');
+  }
+}
+
+document.getElementById('shareBtn').addEventListener('click', shareAsImage);
+
+document.getElementById('historyBtn').addEventListener('click', ()=>{
+  const card = document.getElementById('historyCard');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  if(entries.length === 0){ alert('No entries to close out.'); return; }
+  if(!confirm('Archive this cycle and clear all entries for a new month?')) return;
+  const {balance} = computeBalances(entries);
+  const txns = computeSettlements(balance);
+  const sorted = entries.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const label = `${formatDateLong(sorted[0].date)} to ${formatDateLong(sorted[sorted.length-1].date)}`;
+  try{
+    await fsdb.collection('history').add({
+      label, txns,
+      archivedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const batch = fsdb.batch();
+    entries.forEach(en => batch.delete(fsdb.collection('entries').doc(en.id)));
+    await batch.commit();
+  }catch(err){
+    alert('Could not close out the cycle: ' + err.message);
+  }
+});
+
+// init
+document.getElementById('setupBanner').style.display = configReady ? 'none' : 'block';
+document.getElementById('date').value = todayLocalISO();
+render();
+if(configReady){
+  setStatus('Connecting…');
+  seedIfEmpty().catch(err => setStatus('Error connecting: ' + err.message, true)).finally(startSync);
+} else {
+  setStatus('Not connected — Firebase config missing (see banner above)', true);
+}
+</script>
+</body>
+</html>
