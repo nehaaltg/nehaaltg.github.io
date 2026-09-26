@@ -77,9 +77,22 @@
   .capturing .del{ visibility:hidden; }
   .capturing .share-btn{ visibility:hidden; }
   .capturing #reportArea{ padding:4px; }
-  .sync-status{display:flex; align-items:center; gap:7px; font-size:.78rem; margin:-6px 0 14px;}
+  .sync-badge{
+    display:inline-flex; align-items:center; gap:7px;
+    padding:6px 14px; border-radius:999px;
+    font-size:.78rem; font-weight:700;
+    border:1.5px solid var(--badge-color, var(--line));
+    background: color-mix(in srgb, var(--badge-color, var(--sub)) 18%, var(--card));
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    backdrop-filter: blur(10px) saturate(160%);
+    color: var(--badge-color, var(--sub));
+    margin: -2px 0 14px;
+    transition: background .3s ease, border-color .3s ease, color .3s ease;
+  }
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:var(--badge-color, var(--sub)); flex:0 0 auto; animation:sync-pulse 1.6s ease-in-out infinite;}
+  .sync-dot.static{animation:none;}
+  @keyframes sync-pulse{0%,100%{opacity:1;} 50%{opacity:.4;}}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -89,8 +102,8 @@
   <div id="setupBanner" style="display:none; background:#fef3c7; color:#78350f; border:1px solid #f59e0b; border-radius:12px; padding:14px; font-size:.85rem; margin-bottom:16px;">
     <strong>One-time setup needed:</strong> open this file, find <code>firebaseConfig</code> near the top of the script, and paste in your own free Firebase project's config (see the setup steps you were given).
   </div>
-  <div id="syncStatus" class="sync-status">
-    <div id="syncIcon" style="width:20px;height:20px;"></div>
+  <div id="syncStatus" class="sync-badge">
+    <span id="syncDot" class="sync-dot"></span>
     <span id="syncText">Connecting…</span>
   </div>
   <h1>Food Ledger</h1>
@@ -229,29 +242,15 @@ async function seedIfEmpty(){
   await batch.commit();
 }
 
-const SPINNER_ANIM = {"v":"5.7.4","fr":30,"ip":0,"op":60,"w":32,"h":32,"nm":"spinner","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"arc","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[16,16,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"el","p":{"a":0,"k":[0,0]},"s":{"a":0,"k":[22,22]}},{"ty":"st","c":{"a":0,"k":[0.55,0.58,0.62,1]},"o":{"a":0,"k":100},"w":{"a":0,"k":3.4},"lc":2,"lj":2},{"ty":"tm","s":{"a":0,"k":0},"e":{"a":0,"k":26},"o":{"a":1,"k":[{"t":0,"s":[0],"i":{"x":[0],"y":[0]},"o":{"x":[1],"y":[1]}},{"t":60,"s":[360]}]}},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}],"nm":"arc-group"}],"ip":0,"op":60,"st":0,"bm":0}]};
-const CHECK_ANIM = {"v":"5.7.4","fr":30,"ip":0,"op":22,"w":32,"h":32,"nm":"check","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"check-mark","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[0,0,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"sh","ks":{"a":0,"k":{"c":false,"i":[[0,0],[0,0],[0,0]],"o":[[0,0],[0,0],[0,0]],"v":[[8,17],[13.5,22.5],[24,10]]}}},{"ty":"st","c":{"a":0,"k":[1,1,1,1]},"o":{"a":0,"k":100},"w":{"a":0,"k":3.2},"lc":2,"lj":2},{"ty":"tm","s":{"a":0,"k":0},"e":{"a":1,"k":[{"t":6,"s":[0],"i":{"x":[0],"y":[0]},"o":{"x":[1],"y":[1]}},{"t":18,"s":[100]}]},"o":{"a":0,"k":0}},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}],"nm":"check-group"}],"ip":0,"op":22,"st":0,"bm":0},{"ddd":0,"ind":2,"ty":4,"nm":"bg-circle","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[16,16,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":1,"k":[{"t":0,"s":[0,0,100],"i":{"x":[0.34],"y":[1.56]},"o":{"x":[0.64],"y":[0]}},{"t":5,"s":[125,125,100],"i":{"x":[0.34],"y":[1.56]},"o":{"x":[0.64],"y":[0]}},{"t":9,"s":[100,100,100]}]}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"el","p":{"a":0,"k":[0,0]},"s":{"a":0,"k":[28,28]}},{"ty":"fl","c":{"a":0,"k":[0.086,0.502,0.239,1]},"o":{"a":0,"k":100}},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}],"nm":"bg-group"}],"ip":0,"op":22,"st":0,"bm":0}]};
-const ERROR_ANIM = {"v":"5.7.4","fr":30,"ip":0,"op":16,"w":32,"h":32,"nm":"error","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"dot","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[16,22]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"el","p":{"a":0,"k":[0,0]},"s":{"a":0,"k":[3,3]}},{"ty":"fl","c":{"a":0,"k":[1,1,1,1]},"o":{"a":0,"k":100}},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}],"nm":"dot-group"}],"ip":0,"op":16,"st":0,"bm":0},{"ddd":0,"ind":2,"ty":4,"nm":"stem","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[16,14]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"rc","p":{"a":0,"k":[0,0]},"s":{"a":0,"k":[3,10]},"r":{"a":0,"k":1.5}},{"ty":"fl","c":{"a":0,"k":[1,1,1,1]},"o":{"a":0,"k":100}},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}],"nm":"stem-group"}],"ip":0,"op":16,"st":0,"bm":0},{"ddd":0,"ind":3,"ty":4,"nm":"bg-circle","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[16,16,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":1,"k":[{"t":0,"s":[0,0,100],"i":{"x":[0.34],"y":[1.56]},"o":{"x":[0.64],"y":[0]}},{"t":5,"s":[125,125,100],"i":{"x":[0.34],"y":[1.56]},"o":{"x":[0.64],"y":[0]}},{"t":9,"s":[100,100,100]}]}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"el","p":{"a":0,"k":[0,0]},"s":{"a":0,"k":[28,28]}},{"ty":"fl","c":{"a":0,"k":[0.725,0.11,0.11,1]},"o":{"a":0,"k":100}},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}],"nm":"bg-group"}],"ip":0,"op":16,"st":0,"bm":0}]};
-
-let currentIconAnim = null;
-function playIcon(data, loop){
-  const container = document.getElementById('syncIcon');
-  if(!container) return;
-  if(currentIconAnim){ currentIconAnim.destroy(); }
-  container.innerHTML = '';
-  currentIconAnim = lottie.loadAnimation({
-    container, renderer: 'svg', loop, autoplay: true, animationData: data
-  });
-}
-
 function setStatus(text, state){
   const textEl = document.getElementById('syncText');
-  if(!textEl) return;
+  const badgeEl = document.getElementById('syncStatus');
+  const dotEl = document.getElementById('syncDot');
+  if(!textEl || !badgeEl) return;
   textEl.textContent = text;
-  textEl.style.color = state === 'error' ? '#b91c1c' : 'var(--sub)';
-  if(state === 'error') playIcon(ERROR_ANIM, false);
-  else if(state === 'ok') playIcon(CHECK_ANIM, false);
-  else playIcon(SPINNER_ANIM, true);
+  const color = state === 'error' ? 'var(--neg)' : state === 'ok' ? 'var(--pos)' : 'var(--mobin)';
+  badgeEl.style.setProperty('--badge-color', color);
+  if(dotEl) dotEl.classList.toggle('static', state === 'error');
 }
 
 function startSync(){
